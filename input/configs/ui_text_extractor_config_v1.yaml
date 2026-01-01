@@ -1,0 +1,28 @@
+prompt:
+  template_path: "input/prompts/ui_text_extractor_v1.tmpl"
+  vars:
+    brand: "SwipeAssist"
+
+traits:
+  max_images: 3
+  locale: "en-IN"
+  taxonomy:
+    - name: "ui_sections"
+      description: >
+        Extract visible text blocks as {heading -> body}.
+        Heading is the short label-like line; body is the remaining text in that block.
+        Do not infer.
+    - name: "ui_tags"
+      description: >
+        Extract pill/chip tags as raw_label and also normalized {key,value}
+        when confidently detectable (e.g., height 174 cm).
+        Keep unknown for uncertain.
+    - name: "ui_free_text"
+      description: >
+        Any other visible text lines that don’t fit sections/tags.
+
+ollama:
+  base_url: "http://localhost:11434"
+  model: "qwen2.5vl:latest"
+  endpoint: "/api/generate"
+  timeout_ms: 120000

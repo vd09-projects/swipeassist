@@ -1,0 +1,50 @@
+# SwipeAssist
+
+Utilities for capturing dating-app screenshots and extracting structured UI text.
+
+## Prerequisites
+
+- Go 1.25+
+- Local Ollama endpoint configured as referenced in `input/configs/ui_text_extractor_config_v1.yaml`
+- Chrome installed (for the Bumble automation client)
+
+## Run the UI text extractor
+
+From the repo root:
+
+```bash
+go run ./cmd/ui_text_extractor \
+  -config input/configs/ui_text_extractor_config_v1.yaml \
+  -images input/images/BMVD1.png,input/images/BMVD2.png,input/images/BMVD3.png \
+  -out out/ui_traits.json
+```
+
+Flags:
+
+- `-config` points to the YAML config that wires prompts, taxonomy, and Ollama connection.
+- `-images` accepts a comma-separated list of screenshot paths (defaults to the sample `input/images/BMVD*.png` files when omitted).
+- `-out` writes the JSON output to a file; omit it to print to stdout.
+
+## Run the Bumble app automation client
+
+1. Launch Chrome with remote debugging enabled (only once per session):
+
+   ```bash
+   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+     --remote-debugging-port=9222 \
+     --user-data-dir=/tmp/rod-profile
+   ```
+
+2. Run the Bumble client against that Chrome instance:
+
+   ```bash
+   go run ./cmd/bumble_app_client \
+     -login-url="https://gew3.bumble.com/app" \
+     -remote-url="ws://127.0.0.1:9222/devtools/browser/55467fc4-17a0-438d-8ac2-934eef36e9b0" \
+     -action=LIKE
+   ```
+
+   - Add `-headless=true` if you launch Chrome separately and want the Rod-controlled browser hidden.
+   - Update `-remote-url` to match the WebSocket endpoint printed in Chrome’s terminal when remote debugging starts.
+   - Available actions: `PASS`, `LIKE`, `SUPERSWIPE`.
+
