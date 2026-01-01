@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/vd09-projects/swipeassist/apps"
-	"github.com/vd09-projects/swipeassist/apps/bumble"
 	"github.com/vd09-projects/swipeassist/apps/domain"
 	// CHANGE this to your actual module import path
 )
@@ -26,15 +25,12 @@ func main() {
 
 	ctx := context.Background()
 
-	registry := map[string]apps.Adapter{
-		"bumble": bumble.NewAdapterFromDefaults(),
-	}
 	client, err := apps.New(apps.Config{
-		AppName:    "bumble",
+		AppName:    domain.Bumble,
 		EntryURL:   *loginURL,
 		Headless:   *headless,
 		ControlURL: *control,
-	}, registry)
+	})
 	if err != nil {
 		panic(err)
 	}

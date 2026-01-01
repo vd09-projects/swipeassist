@@ -9,20 +9,20 @@ import (
 )
 
 type Config struct {
-	AppName    string // "bumble", "tinder", ...
-	EntryURL   string // optional override; else adapter.DefaultEntryURL()
+	AppName    domain.AppName // "bumble", "tinder", ...
+	EntryURL   string         // optional override; else adapter.DefaultEntryURL()
 	Headless   bool
 	ControlURL string
 }
 
 type GenericClient struct {
 	cfg     Config
-	adapter Adapter
+	adapter domain.Adapter
 	driver  engine.IDriver
 }
 
-func New(cfg Config, registry map[string]Adapter) (*GenericClient, error) {
-	ad, ok := registry[cfg.AppName]
+func New(cfg Config) (*GenericClient, error) {
+	ad, ok := GetAdapterRegistry()[cfg.AppName]
 	if !ok {
 		return nil, fmt.Errorf("unknown app %q", cfg.AppName)
 	}

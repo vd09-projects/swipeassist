@@ -1,9 +1,8 @@
-package apps
+package domain
 
 import (
 	"context"
 
-	"github.com/vd09-projects/swipeassist/apps/domain"
 	"github.com/vd09-projects/swipeassist/engine"
 )
 
@@ -14,7 +13,7 @@ type Adapter interface {
 	WaitReady(ctx context.Context, d engine.IDriver) error
 
 	NextMedia(ctx context.Context, d engine.IDriver) error
-	Act(ctx context.Context, d engine.IDriver, action domain.Action) error
+	Act(ctx context.Context, d engine.IDriver, action Action) error
 
 	ScreenshotMedia(ctx context.Context, d engine.IDriver, filePath string) error
 }

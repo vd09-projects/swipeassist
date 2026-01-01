@@ -3,7 +3,6 @@ package bumble
 import (
 	"context"
 
-	"github.com/vd09-projects/swipeassist/apps"
 	"github.com/vd09-projects/swipeassist/apps/domain"
 	"github.com/vd09-projects/swipeassist/engine"
 )
@@ -51,4 +50,4 @@ func (a Adapter) ScreenshotMedia(
 }
 
 // compile-time check (optional)
-var _ apps.Adapter = Adapter{}
+var _ domain.Adapter = Adapter{}
