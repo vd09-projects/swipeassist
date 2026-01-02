@@ -18,7 +18,7 @@ func main() {
 		outDir    = flag.String("out", "./out/bumble", "Directory for screenshots")
 		headless  = flag.Bool("headless", false, "Run headless")
 		control   = flag.String("remote-url", "", "Rod ControlURL (optional). If empty, launches a new browser")
-		totalN    = flag.Int("totalImages", 2, "How many times Screenshot (client-controlled)")
+		totalN    = flag.Int("totalImages", 20, "How many times Screenshot (client-controlled)")
 		actionStr = flag.String("action", "LIKE", "PASS | LIKE | SUPERSWIPE")
 	)
 	flag.Parse()

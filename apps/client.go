@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vd09-projects/swipeassist/apps/engine"
 	"github.com/vd09-projects/swipeassist/domain"
-	"github.com/vd09-projects/swipeassist/engine"
 )
 
 type Config struct {

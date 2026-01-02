@@ -2,9 +2,10 @@ package bumble
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/vd09-projects/swipeassist/apps/engine"
 	"github.com/vd09-projects/swipeassist/domain"
-	"github.com/vd09-projects/swipeassist/engine"
 )
 
 type Adapter struct {
@@ -24,6 +25,13 @@ func (a Adapter) WaitReady(ctx context.Context, d engine.IDriver) error {
 }
 
 func (a Adapter) NextMedia(ctx context.Context, d engine.IDriver) error {
+	disabled, err := d.IsVisible(ctx, a.S.NextImageDisabled)
+	if err != nil {
+		return err
+	}
+	if disabled {
+		return fmt.Errorf("next media navigation is disabled")
+	}
 	return d.ClickBySelectors(ctx, a.S.NextImage)
 }
 

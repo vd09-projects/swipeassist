@@ -37,6 +37,29 @@ func (d *Driver) WaitAnyVisible(ctx context.Context, selectors []string) error {
 	return err
 }
 
+func (d *Driver) IsVisible(ctx context.Context, selectors []string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	d.e.MustHavePage()
+
+	for _, sel := range selectors {
+		el, _ := d.e.page.Timeout(600 * time.Millisecond).Element(sel)
+		if el == nil {
+			continue
+		}
+		ok, _ := el.EvalBool(`() => {
+			const r = this.getBoundingClientRect();
+			return !!(r && r.width > 0 && r.height > 0);
+		}`)
+		if ok {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (d *Driver) ClickBySelectors(ctx context.Context, selectors []string) error {
 	return d.e.retry(ctx, func() error {
 		el, _, err := d.e.findFirstVisible(ctx, selectors, d.e.cfg.StepTimeout)
