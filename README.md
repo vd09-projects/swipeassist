@@ -35,7 +35,13 @@ Flags:
      --user-data-dir=/tmp/rod-profile
    ```
 
-2. Run the Bumble client against that Chrome instance:
+2. Fetch the DevTools browser ID (needed for the `-remote-url` flag) from the running Chrome instance:
+
+   ```bash
+   curl http://127.0.0.1:9222/json/version | grep "devtools/browser"
+   ```
+
+3. Run the Bumble client against that Chrome instance:
 
    ```bash
    go run ./cmd/bumble_app_client \
@@ -45,6 +51,5 @@ Flags:
    ```
 
    - Add `-headless=true` if you launch Chrome separately and want the Rod-controlled browser hidden.
-   - Update `-remote-url` to match the WebSocket endpoint printed in Chrome’s terminal when remote debugging starts.
+   - Update `-remote-url` to match the WebSocket endpoint printed in Chrome’s terminal (swap in the devtools/browser ID from step 2).
    - Available actions: `PASS`, `LIKE`, `SUPERSWIPE`.
-

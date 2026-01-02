@@ -3,7 +3,7 @@ package bumble
 import (
 	"context"
 
-	"github.com/vd09-projects/swipeassist/apps/domain"
+	"github.com/vd09-projects/swipeassist/domain"
 	"github.com/vd09-projects/swipeassist/engine"
 )
 
@@ -27,13 +27,13 @@ func (a Adapter) NextMedia(ctx context.Context, d engine.IDriver) error {
 	return d.ClickBySelectors(ctx, a.S.NextImage)
 }
 
-func (a Adapter) Act(ctx context.Context, d engine.IDriver, action domain.Action) error {
+func (a Adapter) Act(ctx context.Context, d engine.IDriver, action domain.AppAction) error {
 	switch action.AType {
-	case domain.ActionPass:
+	case domain.AppActionPass:
 		return d.ClickBySelectors(ctx, a.S.Pass)
-	case domain.ActionLike:
+	case domain.AppActionLike:
 		return d.ClickBySelectors(ctx, a.S.Like)
-	case domain.ActionSuperSwipe:
+	case domain.AppActionSuperSwipe:
 		return d.ClickBySelectors(ctx, a.S.SuperSwipe)
 	default:
 		// ignore unknown actions; or return error if you prefer
@@ -48,6 +48,3 @@ func (a Adapter) ScreenshotMedia(
 ) error {
 	return d.ScreenshotElement(ctx, a.S.AlbumNav, filePath)
 }
-
-// compile-time check (optional)
-var _ domain.Adapter = Adapter{}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/vd09-projects/swipeassist/apps/domain"
+	"github.com/vd09-projects/swipeassist/domain"
 	"github.com/vd09-projects/swipeassist/engine"
 )
 
@@ -17,7 +17,7 @@ type Config struct {
 
 type GenericClient struct {
 	cfg     Config
-	adapter domain.Adapter
+	adapter Adapter
 	driver  engine.IDriver
 }
 
@@ -67,6 +67,6 @@ func (c *GenericClient) Screenshot(ctx context.Context, filePath string) error {
 	return c.adapter.ScreenshotMedia(ctx, c.driver, filePath)
 }
 
-func (c *GenericClient) Act(ctx context.Context, action domain.Action) error {
+func (c *GenericClient) Act(ctx context.Context, action domain.AppAction) error {
 	return c.adapter.Act(ctx, c.driver, action)
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/vd09-projects/swipeassist/apps"
-	"github.com/vd09-projects/swipeassist/apps/domain"
+	"github.com/vd09-projects/swipeassist/domain"
 	// CHANGE this to your actual module import path
 )
 
@@ -69,14 +69,14 @@ func main() {
 	// 4) Sleep before clicking action (as requested)
 	time.Sleep(20 * time.Second)
 
-	var act domain.Action
+	var act domain.AppAction
 	switch *actionStr {
 	case "PASS":
-		act.AType = domain.ActionPass
+		act.AType = domain.AppActionPass
 	case "LIKE":
-		act.AType = domain.ActionLike
+		act.AType = domain.AppActionLike
 	case "SUPERSWIPE":
-		act.AType = domain.ActionSuperSwipe
+		act.AType = domain.AppActionSuperSwipe
 	default:
 		panic("invalid -action. Use PASS | LIKE | SUPERSWIPE")
 	}
