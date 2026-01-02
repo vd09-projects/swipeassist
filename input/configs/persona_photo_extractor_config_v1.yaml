@@ -1,0 +1,61 @@
+prompt:
+  template_path: "input/prompts/persona_from_photos_v2.tmpl"
+  vars:
+    brand: "SwipeAssist"
+
+traits:
+  max_images: 3
+  locale: "en-IN"
+  taxonomy:
+    - name: "physical_attraction_cues"
+      description: >
+        Photo-grounded, non-sensitive physical cues that can influence attraction.
+        Allowed: hair style/length, facial hair, grooming, visible accessories (glasses), clothing fit/style,
+        overall build (e.g., slim/average/muscular/stocky) ONLY if clearly visible, face visibility (clear/partial).
+        Not allowed: skin tone/complexion color, race/ethnicity inference, health/medical claims.
+        If unclear, use "unknown" with low confidence.
+
+    - name: "scene_and_setting"
+      description: >
+        Photo-only description of the environment/setting (outdoors/indoors, nature/city, event-like setting).
+        No text usage. Keep it factual.
+
+    - name: "activities_and_interests"
+      description: >
+        Only activities clearly visible (hiking, travel, gym, pets, concerts).
+        Do not infer from captions or tags. If not visible, use unknown.
+
+    - name: "social_and_interaction_style"
+      description: >
+        Photo-grounded social context: solo vs group, interaction with animals/people, body language cues.
+        Avoid judging personality; use "suggests/might" language.
+
+    - name: "lifestyle_indicators"
+      description: >
+        Visible lifestyle cues from objects and context (travel gear, outdoor equipment, work-like setting).
+        Must be photo-grounded and non-sensitive.
+
+    - name: "demeanor_and_vibe"
+      description: >
+        Soft, non-sensitive vibe cues grounded in body language and scene (relaxed, playful, adventurous).
+        Must be phrased as tentative ("suggests") with confidence.
+
+    - name: "pet_and_animal_presence"
+      description: >
+        Presence of pets/animals and the interaction style if visible. No guessing if unclear.
+
+    - name: "photo_style_and_effort"
+      description: >
+        Photo composition/quality and what it suggests about how they present themselves visually
+        (candid vs posed, scenic shots vs selfies). Do not infer sensitive details.
+
+    - name: "potential_concerns"
+      description: >
+        Conservative, photo-based concerns only: face fully hidden, extreme blur, unsafe context, misleading edits.
+        Avoid moral judgment; just describe visibility/clarity issues.
+
+ollama:
+  base_url: "http://localhost:11434"
+  model: "qwen2.5vl:latest"
+  endpoint: "/api/generate"
+  timeout_ms: 120000

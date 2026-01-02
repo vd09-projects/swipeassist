@@ -12,40 +12,47 @@ import (
 	"time"
 
 	"github.com/vd09-projects/swipeassist/extractor"
+	"github.com/vd09-projects/vision-traits/traits"
 )
 
 func main() {
 	var (
-		cfgPath    = flag.String("config", "input/configs/ui_text_extractor_config_v1.yaml", "Path to behaviour extractor config YAML")
-		personaCfg = flag.String("persona-config", "input/configs/persona_photo_extractor_config_v1.yaml", "Path to persona photo extractor config YAML (required for extractor init)")
-		imagesCSV  = flag.String("images", "", "Comma-separated list of image paths. Defaults to bundled sample screenshots.")
-		outPath    = flag.String("out", "", "Optional file to write the JSON result (prints to stdout when empty)")
-		timeout    = flag.Duration("timeout", 2*time.Minute, "Context timeout for the extraction request")
+		behaviourCfg = flag.String("behaviour-config", "input/configs/ui_text_extractor_config_v1.yaml", "Path to behaviour extractor config YAML (required for extractor init)")
+		personaCfg   = flag.String("persona-config", "input/configs/persona_photo_extractor_config_v1.yaml", "Path to persona photo extractor config YAML")
+		imagesCSV    = flag.String("images", "", "Comma-separated list of persona photo paths. Defaults to bundled sample screenshots.")
+		outPath      = flag.String("out", "", "Optional file to write the JSON result (prints to stdout when empty)")
+		timeout      = flag.Duration("timeout", 5*time.Minute, "Context timeout for the extraction request")
 	)
 	flag.Parse()
 
 	images := parseImageList(*imagesCSV)
 	if len(images) == 0 {
-		images = defaultImages()
+		images = defaultPersonaImages()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
 	ext, err := extractor.New(&extractor.ExtractorConfig{
-		BehaviourCfgPath: *cfgPath,
+		BehaviourCfgPath: *behaviourCfg,
 		PersonaCfgPath:   *personaCfg,
 	})
 	if err != nil {
 		log.Fatalf("init extractor: %v", err)
 	}
 
-	results, err := ext.ExtractBehaviour(ctx, images)
-	if err != nil {
-		log.Fatalf("extract: %v", err)
+	personaByPhoto := make([]*traits.ExtractedTraits, 0, len(images))
+	for _, image := range images {
+		tr, err := ext.ExtractPhotoPersona(ctx, []string{image})
+		if err != nil {
+			log.Fatalf("extract persona for %s: %v", image, err)
+		}
+		personaByPhoto = append(personaByPhoto, tr)
 	}
 
-	payload, err := json.MarshalIndent(results, "", "  ")
+	bundle := extractor.MapPhotosToPersonaBundle(personaByPhoto)
+
+	payload, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
 		log.Fatalf("marshal results: %v", err)
 	}
@@ -61,7 +68,7 @@ func main() {
 	if err := os.WriteFile(*outPath, payload, 0o644); err != nil {
 		log.Fatalf("write output: %v", err)
 	}
-	fmt.Printf("wrote extractor output to %s\n", *outPath)
+	fmt.Printf("wrote persona bundle to %s\n", *outPath)
 }
 
 func parseImageList(csv string) []string {
@@ -82,7 +89,7 @@ func parseImageList(csv string) []string {
 	return images
 }
 
-func defaultImages() []string {
+func defaultPersonaImages() []string {
 	return []string{
 		"input/images/BMVD1.png",
 		"input/images/BMVD2.png",
