@@ -72,11 +72,11 @@ func main() {
 	var act domain.AppAction
 	switch *actionStr {
 	case "PASS":
-		act.AType = domain.AppActionPass
+		act.Kind = domain.AppActionPass
 	case "LIKE":
-		act.AType = domain.AppActionLike
+		act.Kind = domain.AppActionLike
 	case "SUPERSWIPE":
-		act.AType = domain.AppActionSuperSwipe
+		act.Kind = domain.AppActionSuperSwipe
 	default:
 		panic("invalid -action. Use PASS | LIKE | SUPERSWIPE")
 	}

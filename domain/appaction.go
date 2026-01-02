@@ -9,6 +9,6 @@ const (
 )
 
 type AppAction struct {
-	AType   AppActionType
+	Kind    AppActionType
 	Message string
 }

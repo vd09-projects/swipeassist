@@ -36,7 +36,7 @@ func (a Adapter) NextMedia(ctx context.Context, d engine.IDriver) error {
 }
 
 func (a Adapter) Act(ctx context.Context, d engine.IDriver, action domain.AppAction) error {
-	switch action.AType {
+	switch action.Kind {
 	case domain.AppActionPass:
 		return d.ClickBySelectors(ctx, a.S.Pass)
 	case domain.AppActionLike:
