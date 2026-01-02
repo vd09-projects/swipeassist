@@ -16,7 +16,7 @@ type QACyclePolicyConfig struct {
 
 func DefaultQACyclePolicyConfig() QACyclePolicyConfig {
 	return QACyclePolicyConfig{
-		LikesBeforePass: 2,
+		LikesBeforePass: 3,
 		ScoreLike:       70,
 		ScorePass:       40,
 	}
