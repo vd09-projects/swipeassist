@@ -85,7 +85,12 @@ func parseFlags() *Config {
 	}
 }
 
-func run(ctx context.Context, cfg *Config) error {
+func run(ctx context.Context, cfg *Config) (retErr error) {
+	stats := newRunAnalytics(cfg.PolicyName)
+	defer func() {
+		stats.Log(retErr)
+	}()
+
 	client, err := makeClient(cfg)
 	if err != nil {
 		return fmt.Errorf("init app client: %w", err)
@@ -125,9 +130,11 @@ func run(ctx context.Context, cfg *Config) error {
 			}
 		}
 
-		if err := processProfile(ctx, profile, cfg, client, ext, engine); err != nil {
+		stats.ProfileAttempt()
+		if err := processProfile(ctx, profile, cfg, client, ext, engine, stats); err != nil {
 			return fmt.Errorf("profile %d: %w", profile, err)
 		}
+		stats.ProfileComplete()
 	}
 	return nil
 }
@@ -158,6 +165,66 @@ func normalizePolicyName(name string) policies.PolicyName {
 	return normalized
 }
 
+type runAnalytics struct {
+	start            time.Time
+	policy           policies.PolicyName
+	profileAttempts  int
+	profilesComplete int
+	screenshots      int
+	actionCounts     map[domain.AppActionType]int
+}
+
+func newRunAnalytics(policy policies.PolicyName) *runAnalytics {
+	return &runAnalytics{
+		start:  time.Now(),
+		policy: policy,
+		actionCounts: map[domain.AppActionType]int{
+			domain.AppActionLike:       0,
+			domain.AppActionPass:       0,
+			domain.AppActionSuperSwipe: 0,
+		},
+	}
+}
+
+func (a *runAnalytics) ProfileAttempt() {
+	a.profileAttempts++
+}
+
+func (a *runAnalytics) ProfileComplete() {
+	a.profilesComplete++
+}
+
+func (a *runAnalytics) AddScreenshots(n int) {
+	a.screenshots += n
+}
+
+func (a *runAnalytics) RecordDecision(decision *policies.Decision) {
+	if decision == nil {
+		return
+	}
+	a.actionCounts[decision.Action.Kind]++
+}
+
+func (a *runAnalytics) Log(err error) {
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	log.Printf(
+		"analytics: status=%s policy=%s runtime=%s profiles_attempted=%d profiles_completed=%d screenshots=%d actions_like=%d actions_pass=%d actions_superswipe=%d",
+		status,
+		a.policy,
+		time.Since(a.start).Round(time.Millisecond),
+		a.profileAttempts,
+		a.profilesComplete,
+		a.screenshots,
+		a.actionCounts[domain.AppActionLike],
+		a.actionCounts[domain.AppActionPass],
+		a.actionCounts[domain.AppActionSuperSwipe],
+	)
+}
+
 func processProfile(
 	ctx context.Context,
 	profileIdx int,
@@ -165,6 +232,7 @@ func processProfile(
 	client *apps.GenericClient,
 	ext extractor.Extractor,
 	engine *decisionengine.DecisionEngine,
+	stats *runAnalytics,
 ) error {
 	imagePaths, err := captureProfileScreens(ctx, client, profileIdx, cfg.ShotsPerProfile, cfg.ScreenshotPattern)
 	if err != nil {
@@ -172,6 +240,9 @@ func processProfile(
 	}
 	if len(imagePaths) == 0 {
 		return fmt.Errorf("no screenshots captured")
+	}
+	if stats != nil {
+		stats.AddScreenshots(len(imagePaths))
 	}
 
 	behaviour, err := ext.ExtractBehaviour(ctx, imagePaths)
@@ -186,6 +257,9 @@ func processProfile(
 	})
 	if err != nil {
 		return fmt.Errorf("decision engine: %w", err)
+	}
+	if stats != nil {
+		stats.RecordDecision(decision)
 	}
 
 	log.Printf("profile %d: decision=%s score=%d policy=%s reason=%s", profileIdx, decision.Action.Kind, decision.Score, decision.PolicyName, decision.Reason)
