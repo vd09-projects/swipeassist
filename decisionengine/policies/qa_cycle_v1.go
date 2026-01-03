@@ -45,7 +45,7 @@ func (p *QACyclePolicy) Decide(ctx context.Context, dc *DecisionContext) (*Decis
 	qCount := countQuestions(dc.BehaviourTraits)
 
 	// Reset rule: <2 questions => Pass + reset
-	if qCount < 2 {
+	if qCount < 0 {
 		p.mu.Lock()
 		p.likeCount = 0
 		p.mu.Unlock()
