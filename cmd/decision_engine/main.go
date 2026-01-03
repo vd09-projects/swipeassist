@@ -22,7 +22,7 @@ type Config struct {
 	ControlURL        string
 	BehaviourCfgPath  string
 	PersonaCfgPath    string
-	ProfileCount      int
+	ProfileCount      int // 0 means run until timeout
 	ShotsPerProfile   int
 	ScreenshotPattern string
 	Timeout           time.Duration
@@ -38,11 +38,8 @@ const (
 func main() {
 	cfg := parseFlags()
 
-	// ctx := context.Background()
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
-	fmt.Println(cfg.Timeout, 10*time.Minute)
-	// return
 
 	if err := run(ctx, cfg); err != nil {
 		log.Fatalf("decision_engine: %v", err)
@@ -57,7 +54,7 @@ func parseFlags() *Config {
 		control       = flag.String("remote-url", "", "Rod ControlURL (optional). If empty, launches a new browser")
 		behaviourCfg  = flag.String("behaviour-config", "input/configs/ui_text_extractor_config_v1.yaml", "Path to behaviour extractor config YAML")
 		personaCfg    = flag.String("persona-config", "input/configs/persona_photo_extractor_config_v1.yaml", "Path to persona photo extractor config YAML")
-		profileCount  = flag.Int("profiles", 1, "Number of profiles to process in one run")
+		profileCount  = flag.Int("profiles", 0, "Number of profiles to process (0 = run until timeout)")
 		shotsPerProf  = flag.Int("shots-per-profile", 1, "Screenshots to capture per profile (album images)")
 		screenshotTpl = flag.String("screenshot-pattern", "out/decision_engine/profile_%02d_img_%02d.png", "Printf-style pattern for screenshots; args: profile index (1-based), shot index (1-based)")
 		timeout       = flag.Duration("timeout", 10*time.Minute, "Overall timeout for the pipeline")
@@ -105,9 +102,17 @@ func run(ctx context.Context, cfg *Config) error {
 
 	engine := makeDecisionEngine(cfg.App)
 
-	for profile := 1; profile <= cfg.ProfileCount; profile++ {
+	for profile := 1; ; profile++ {
+		if cfg.ProfileCount > 0 && profile > cfg.ProfileCount {
+			break
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if profile > 1 {
-			time.Sleep(betweenProfilesDelay)
+			if err := sleepCtx(ctx, betweenProfilesDelay); err != nil {
+				return err
+			}
 		}
 
 		if err := processProfile(ctx, profile, cfg, client, ext, engine); err != nil {
@@ -185,6 +190,9 @@ func captureProfileScreens(
 	paths := make([]string, 0, shots)
 
 	for s := 1; s <= shots; s++ {
+		if err := ctx.Err(); err != nil {
+			return paths, err
+		}
 		path := fmt.Sprintf(pattern, profileIdx, s)
 		if err := client.Screenshot(ctx, path); err != nil {
 			return paths, fmt.Errorf("capture screenshot %d: %w", s, err)
@@ -197,9 +205,22 @@ func captureProfileScreens(
 				log.Printf("profile %d: NextMedia stopped after %d shot(s): %v", profileIdx, s, err)
 				break
 			}
-			time.Sleep(betweenShotsDelay)
+			if err := sleepCtx(ctx, betweenShotsDelay); err != nil {
+				return paths, err
+			}
 		}
 	}
 
 	return paths, nil
+}
+
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
 }
