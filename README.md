@@ -92,4 +92,5 @@ Flags and tips:
 - `-screenshot-pattern`: printf pattern for saved images (`profile index`, `shot index`).
 - `-behaviour-config` / `-persona-config`: extractor YAMLs (defaults point to bundled configs).
 - `-dry-run`: skip clicking actions; only log decisions.
+- `-policy`: choose decision profile (`qa_cycle_v1` default, `probabilistic_ratio_v1` adds random like/pass decisions to avoid easy-to-spot patterns). When using `probabilistic_ratio_v1`, tune the ratio with `-policy-like-weight` / `-policy-pass-weight` (e.g., 3:2 => ~60/40 like/pass).
 - Outputs: screenshots under `out/decision_engine` and logged decisions (action, score, policy, reason).

@@ -14,6 +14,8 @@ type QACyclePolicyConfig struct {
 	ScorePass       int // e.g. 40
 }
 
+const QACyclePolicyName PolicyName = "qa_cycle_v1"
+
 func DefaultQACyclePolicyConfig() QACyclePolicyConfig {
 	return QACyclePolicyConfig{
 		LikesBeforePass: 3,
@@ -36,7 +38,7 @@ func NewQACyclePolicy(cfg QACyclePolicyConfig) *QACyclePolicy {
 	return &QACyclePolicy{cfg: cfg}
 }
 
-func (p *QACyclePolicy) Name() string { return "qa_cycle_v1" }
+func (p *QACyclePolicy) Name() PolicyName { return QACyclePolicyName }
 
 func (p *QACyclePolicy) Decide(ctx context.Context, dc *DecisionContext) (*Decision, error) {
 	if dc == nil {
@@ -45,7 +47,7 @@ func (p *QACyclePolicy) Decide(ctx context.Context, dc *DecisionContext) (*Decis
 	qCount := countQuestions(dc.BehaviourTraits)
 
 	// Reset rule: <2 questions => Pass + reset
-	if qCount < 0 {
+	if qCount < 2 {
 		p.mu.Lock()
 		p.likeCount = 0
 		p.mu.Unlock()

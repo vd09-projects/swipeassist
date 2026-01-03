@@ -27,12 +27,15 @@ type Config struct {
 	ScreenshotPattern string
 	Timeout           time.Duration
 	DryRun            bool
+	PolicyName        policies.PolicyName
+	ProbLikeWeight    int
+	ProbPassWeight    int
 }
 
 const (
-	settleDelay          = 10 * time.Second
+	settleDelay          = 5 * time.Second
 	betweenShotsDelay    = 500 * time.Millisecond
-	betweenProfilesDelay = 10 * time.Second
+	betweenProfilesDelay = 3 * time.Second
 )
 
 func main() {
@@ -59,6 +62,7 @@ func parseFlags() *Config {
 		screenshotTpl = flag.String("screenshot-pattern", "out/decision_engine/profile_%02d_img_%02d.png", "Printf-style pattern for screenshots; args: profile index (1-based), shot index (1-based)")
 		timeout       = flag.Duration("timeout", 10*time.Minute, "Overall timeout for the pipeline")
 		dryRun        = flag.Bool("dry-run", false, "Print the decision but do not click Like/Pass/Superswipe")
+		policyName    = flag.String("policy", string(policies.QACyclePolicyName), "Decision policy to use (qa_cycle_v1, probabilistic_ratio_v1)")
 	)
 	flag.Parse()
 
@@ -76,6 +80,7 @@ func parseFlags() *Config {
 		ScreenshotPattern: *screenshotTpl,
 		Timeout:           *timeout,
 		DryRun:            *dryRun,
+		PolicyName:        normalizePolicyName(*policyName),
 	}
 }
 
@@ -100,7 +105,10 @@ func run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("init extractor: %w", err)
 	}
 
-	engine := makeDecisionEngine(cfg.App)
+	engine, err := makeDecisionEngine(cfg)
+	if err != nil {
+		return fmt.Errorf("init decision engine: %w", err)
+	}
 
 	for profile := 1; ; profile++ {
 		if cfg.ProfileCount > 0 && profile > cfg.ProfileCount {
@@ -131,10 +139,21 @@ func makeClient(cfg *Config) (*apps.GenericClient, error) {
 	})
 }
 
-func makeDecisionEngine(app domain.AppName) *decisionengine.DecisionEngine {
+func makeDecisionEngine(cfg *Config) (*decisionengine.DecisionEngine, error) {
 	reg := decisionengine.NewRegistry()
-	reg.Register(app, policies.NewQACyclePolicy(policies.DefaultQACyclePolicyConfig()))
-	return decisionengine.NewDecisionEngine(reg)
+	policy, err := reg.Resolve(cfg.PolicyName)
+	if err != nil {
+		return nil, err
+	}
+	return decisionengine.NewDecisionEngine(reg, policy.Name()), nil
+}
+
+func normalizePolicyName(name string) policies.PolicyName {
+	normalized := policies.PolicyName(strings.ToLower(strings.TrimSpace(name)))
+	if normalized == "" {
+		return policies.QACyclePolicyName
+	}
+	return normalized
 }
 
 func processProfile(

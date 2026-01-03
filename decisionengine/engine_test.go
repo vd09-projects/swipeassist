@@ -10,7 +10,7 @@ import (
 
 type fakePolicy struct {
 	t        *testing.T
-	name     string
+	name     policies.PolicyName
 	decision *policies.Decision
 	err      error
 
@@ -18,7 +18,7 @@ type fakePolicy struct {
 	lastCtx   *policies.DecisionContext
 }
 
-func (f *fakePolicy) Name() string { return f.name }
+func (f *fakePolicy) Name() policies.PolicyName { return f.name }
 
 func (f *fakePolicy) Decide(ctx context.Context, dc *policies.DecisionContext) (*policies.Decision, error) {
 	f.callCount++
@@ -33,10 +33,10 @@ func TestRegistryResolveRegistered(t *testing.T) {
 	t.Parallel()
 
 	reg := NewRegistry()
-	p := &fakePolicy{t: t, name: "fake"}
-	reg.Register(domain.Bumble, p)
+	p := &fakePolicy{t: t, name: policies.PolicyName("fake")}
+	reg.Register(p.name, p)
 
-	got, err := reg.Resolve(domain.Bumble)
+	got, err := reg.Resolve(p.name)
 	if err != nil {
 		t.Fatalf("Resolve returned error: %v", err)
 	}
@@ -49,9 +49,9 @@ func TestRegistryResolveMissing(t *testing.T) {
 	t.Parallel()
 
 	reg := NewRegistry()
-	got, err := reg.Resolve(domain.Bumble)
+	got, err := reg.Resolve(policies.PolicyName("missing"))
 	if err == nil {
-		t.Fatalf("expected error when resolving missing policy")
+		t.Fatalf("expected error when resolving missing policy name")
 	}
 	if got != nil {
 		t.Fatalf("expected nil policy when missing, got %#v", got)
@@ -72,10 +72,10 @@ func TestDecisionEngineUsesPolicyFromRegistry(t *testing.T) {
 		PolicyName: "fake",
 	}
 
-	fp := &fakePolicy{t: t, name: "fake", decision: wantDecision}
-	reg.Register(domain.Bumble, fp)
+	fp := &fakePolicy{t: t, name: policies.PolicyName("fake"), decision: wantDecision}
+	reg.Register(fp.name, fp)
 
-	engine := NewDecisionEngine(reg)
+	engine := NewDecisionEngine(reg, fp.name)
 	dc := &policies.DecisionContext{
 		App:        domain.Bumble,
 		ProfileKey: "profile-key",
@@ -99,7 +99,7 @@ func TestDecisionEngineUsesPolicyFromRegistry(t *testing.T) {
 func TestDecisionEnginePropagatesResolveError(t *testing.T) {
 	t.Parallel()
 
-	engine := NewDecisionEngine(NewRegistry())
+	engine := NewDecisionEngine(NewRegistry(), policies.PolicyName("missing"))
 	_, err := engine.Decide(context.Background(), &policies.DecisionContext{App: domain.Bumble})
 	if err == nil {
 		t.Fatalf("expected error when no policy registered")

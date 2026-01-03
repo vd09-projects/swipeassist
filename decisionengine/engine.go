@@ -7,15 +7,19 @@ import (
 )
 
 type DecisionEngine struct {
-	reg *Registry
+	reg        *Registry
+	policyName policies.PolicyName
 }
 
-func NewDecisionEngine(reg *Registry) *DecisionEngine {
-	return &DecisionEngine{reg: reg}
+func NewDecisionEngine(reg *Registry, policyName policies.PolicyName) *DecisionEngine {
+	return &DecisionEngine{
+		reg:        reg,
+		policyName: policyName,
+	}
 }
 
 func (e *DecisionEngine) Decide(ctx context.Context, dc *policies.DecisionContext) (*policies.Decision, error) {
-	p, err := e.reg.Resolve(dc.App)
+	p, err := e.reg.Resolve(e.policyName)
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,6 @@ import (
 
 // Policy is a pluggable "brain" strategy.
 type Policy interface {
-	Name() string
+	Name() policies.PolicyName
 	Decide(ctx context.Context, dc *policies.DecisionContext) (*policies.Decision, error)
 }

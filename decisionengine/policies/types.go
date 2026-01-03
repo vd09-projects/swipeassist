@@ -2,13 +2,15 @@ package policies
 
 import "github.com/vd09-projects/swipeassist/domain"
 
+type PolicyName string
+
 // Recommendation is the generic output from the chooser engine.
 type Decision struct {
 	App        domain.AppName   `json:"app"`
 	Action     domain.AppAction `json:"action"`
 	Score      int              `json:"score"` // 0-100 (keep; optional now)
 	Reason     string           `json:"reason"`
-	PolicyName string           `json:"policy_name"`
+	PolicyName PolicyName       `json:"policy_name"`
 }
 
 // DecisionContext replaces the old "Input".
