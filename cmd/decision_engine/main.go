@@ -13,6 +13,7 @@ import (
 	"github.com/vd09-projects/swipeassist/decisionengine/policies"
 	"github.com/vd09-projects/swipeassist/domain"
 	"github.com/vd09-projects/swipeassist/extractor"
+	"github.com/vd09-projects/swipeassist/utils"
 )
 
 type Config struct {
@@ -97,13 +98,14 @@ func run(ctx context.Context, cfg *Config) error {
 
 	time.Sleep(settleDelay)
 
-	ext, err := extractor.New(&extractor.ExtractorConfig{
-		BehaviourCfgPath: cfg.BehaviourCfgPath,
-		PersonaCfgPath:   cfg.PersonaCfgPath,
-	})
-	if err != nil {
-		return fmt.Errorf("init extractor: %w", err)
-	}
+	// ext, err := extractor.NewVisionExtractor(&extractor.ExtractorConfig{
+	// 	BehaviourCfgPath: cfg.BehaviourCfgPath,
+	// 	PersonaCfgPath:   cfg.PersonaCfgPath,
+	// })
+	// if err != nil {
+	// 	return fmt.Errorf("init extractor: %w", err)
+	// }
+	ext := extractor.NewNoopExtractor(5 * time.Second)
 
 	engine, err := makeDecisionEngine(cfg)
 	if err != nil {
@@ -118,7 +120,7 @@ func run(ctx context.Context, cfg *Config) error {
 			return err
 		}
 		if profile > 1 {
-			if err := sleepCtx(ctx, betweenProfilesDelay); err != nil {
+			if err := utils.SleepCtx(ctx, betweenProfilesDelay); err != nil {
 				return err
 			}
 		}
@@ -224,22 +226,11 @@ func captureProfileScreens(
 				log.Printf("profile %d: NextMedia stopped after %d shot(s): %v", profileIdx, s, err)
 				break
 			}
-			if err := sleepCtx(ctx, betweenShotsDelay); err != nil {
+			if err := utils.SleepCtx(ctx, betweenShotsDelay); err != nil {
 				return paths, err
 			}
 		}
 	}
 
 	return paths, nil
-}
-
-func sleepCtx(ctx context.Context, d time.Duration) error {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
-	}
 }

@@ -22,7 +22,7 @@ type VisionExtractor struct {
 	personaTr   traitsPathExtractor
 }
 
-func New(eCfg *ExtractorConfig) (Extractor, error) {
+func NewVisionExtractor(eCfg *ExtractorConfig) (Extractor, error) {
 	if eCfg == nil {
 		return nil, fmt.Errorf("Extractor config is nil")
 	}

@@ -33,7 +33,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	ext, err := extractor.New(&extractor.ExtractorConfig{
+	ext, err := extractor.NewVisionExtractor(&extractor.ExtractorConfig{
 		BehaviourCfgPath: *behaviourCfg,
 		PersonaCfgPath:   *personaCfg,
 	})

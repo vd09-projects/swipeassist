@@ -21,7 +21,7 @@ type ProbabilisticRatioPolicyConfig struct {
 
 func DefaultProbabilisticRatioPolicyConfig() ProbabilisticRatioPolicyConfig {
 	return ProbabilisticRatioPolicyConfig{
-		LikeWeight: 5,
+		LikeWeight: 8,
 		PassWeight: 2,
 		ScoreLike:  70,
 		ScorePass:  40,
