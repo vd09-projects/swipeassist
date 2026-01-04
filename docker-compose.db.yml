@@ -1,0 +1,20 @@
+services:
+  pg:
+    image: postgres:16
+    container_name: swipeassist-pg
+    restart: unless-stopped
+    ports: ["${PG_HOST_PORT:-55432}:5432"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: swipeassist
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: "Asia/Kolkata"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d swipeassist"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
