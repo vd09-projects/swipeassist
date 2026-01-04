@@ -14,6 +14,7 @@ import (
 	"github.com/vd09-projects/swipeassist/decisionengine/policies"
 	"github.com/vd09-projects/swipeassist/domain"
 	"github.com/vd09-projects/swipeassist/extractor"
+	"github.com/vd09-projects/swipeassist/internal/persistence"
 	"github.com/vd09-projects/swipeassist/utils"
 )
 
@@ -32,6 +33,7 @@ type Config struct {
 	PolicyName        policies.PolicyName
 	ProbLikeWeight    int
 	ProbPassWeight    int
+	DBURL             string
 }
 
 const (
@@ -65,6 +67,7 @@ func parseFlags() *Config {
 		timeout       = flag.Duration("timeout", 10*time.Minute, "Overall timeout for the pipeline")
 		dryRun        = flag.Bool("dry-run", false, "Print the decision but do not click Like/Pass/Superswipe")
 		policyName    = flag.String("policy", string(policies.QACyclePolicyName), "Decision policy to use (qa_cycle_v1, probabilistic_ratio_v1)")
+		dbURL         = flag.String("db-url", "postgres://postgres:postgres@localhost:55432/swipeassist?sslmode=disable", "Postgres connection URL; when set, behaviour traits and decisions are persisted")
 	)
 	flag.Parse()
 
@@ -83,10 +86,17 @@ func parseFlags() *Config {
 		Timeout:           *timeout,
 		DryRun:            *dryRun,
 		PolicyName:        normalizePolicyName(*policyName),
+		DBURL:             strings.TrimSpace(*dbURL),
 	}
 }
 
 func run(ctx context.Context, cfg *Config) (retErr error) {
+	store, err := persistence.NewStore(ctx, cfg.DBURL)
+	if err != nil {
+		return fmt.Errorf("init db store: %w", err)
+	}
+	defer store.Close(ctx)
+
 	session := analytics.NewSession(analytics.Config{
 		App:    cfg.App,
 		Policy: cfg.PolicyName,
@@ -136,7 +146,7 @@ func run(ctx context.Context, cfg *Config) (retErr error) {
 		}
 
 		session.ProfileAttempt()
-		if err := processProfile(ctx, profile, cfg, client, ext, engine, session); err != nil {
+		if err := processProfile(ctx, profile, cfg, client, ext, engine, session, store); err != nil {
 			return fmt.Errorf("profile %d: %w", profile, err)
 		}
 		session.ProfileComplete()
@@ -178,7 +188,9 @@ func processProfile(
 	ext extractor.Extractor,
 	engine *decisionengine.DecisionEngine,
 	session *analytics.Session,
+	store persistence.Store,
 ) error {
+	profileKey := fmt.Sprintf("profile_%02d", profileIdx)
 	imagePaths, err := captureProfileScreens(ctx, client, profileIdx, cfg.ShotsPerProfile, cfg.ScreenshotPattern)
 	if err != nil {
 		return err
@@ -194,17 +206,23 @@ func processProfile(
 	if err != nil {
 		return fmt.Errorf("extract behaviour: %w", err)
 	}
+	if err := store.SaveBehaviour(ctx, profileKey, cfg.App, behaviour); err != nil {
+		return fmt.Errorf("store behaviour traits: %w", err)
+	}
 
 	decision, err := engine.Decide(ctx, &policies.DecisionContext{
 		App:             cfg.App,
 		BehaviourTraits: behaviour,
-		ProfileKey:      fmt.Sprintf("profile_%02d", profileIdx),
+		ProfileKey:      profileKey,
 	})
 	if err != nil {
 		return fmt.Errorf("decision engine: %w", err)
 	}
 	if session != nil {
 		session.RecordAction(decision.Action.Kind)
+	}
+	if err := store.SaveDecision(ctx, profileKey, decision); err != nil {
+		return fmt.Errorf("store decision: %w", err)
 	}
 
 	log.Printf("profile %d: decision=%s score=%d policy=%s reason=%s", profileIdx, decision.Action.Kind, decision.Score, decision.PolicyName, decision.Reason)
