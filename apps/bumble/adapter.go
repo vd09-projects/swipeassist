@@ -3,28 +3,42 @@ package bumble
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/vd09-projects/swipeassist/apps/engine"
 	"github.com/vd09-projects/swipeassist/domain"
 )
 
+const BumbleProfileFormat = "Profile_%s_%d"
+
 type Adapter struct {
-	S Selectors
+	startTime    time.Time
+	profileIndex int
+	S            Selectors
 }
 
-func NewAdapterFromDefaults() Adapter {
-	return Adapter{S: DefaultSelectors()}
+func NewAdapterFromDefaults() *Adapter {
+	return &Adapter{
+		startTime:    time.Now(),
+		profileIndex: 1,
+		S:            DefaultSelectors(),
+	}
 }
 
-func (a Adapter) Name() string { return "bumble" }
+func (a *Adapter) Name() string { return "bumble" }
 
-func (a Adapter) DefaultEntryURL() string { return "https://bumble.com/app" }
+func (a *Adapter) DefaultEntryURL() string { return "https://bumble.com/app" }
 
-func (a Adapter) WaitReady(ctx context.Context, d engine.IDriver) error {
+func (a *Adapter) WaitReady(ctx context.Context, d engine.IDriver) error {
 	return d.WaitAnyVisible(ctx, a.S.ReadyHints)
 }
 
-func (a Adapter) NextMedia(ctx context.Context, d engine.IDriver) error {
+func (a *Adapter) GetProfileId(ctx context.Context) string {
+	timestamp := a.startTime.UTC().Format(time.RFC3339)
+	return fmt.Sprintf(BumbleProfileFormat, timestamp, a.profileIndex)
+}
+
+func (a *Adapter) NextMedia(ctx context.Context, d engine.IDriver) error {
 	disabled, err := d.IsVisible(ctx, a.S.NextImageDisabled)
 	if err != nil {
 		return err
@@ -35,7 +49,8 @@ func (a Adapter) NextMedia(ctx context.Context, d engine.IDriver) error {
 	return d.ClickBySelectors(ctx, a.S.NextImage)
 }
 
-func (a Adapter) Act(ctx context.Context, d engine.IDriver, action domain.AppAction) error {
+func (a *Adapter) Act(ctx context.Context, d engine.IDriver, action domain.AppAction) error {
+	a.profileIndex++
 	switch action.Kind {
 	case domain.AppActionPass:
 		return d.ClickBySelectors(ctx, a.S.Pass)
@@ -49,7 +64,7 @@ func (a Adapter) Act(ctx context.Context, d engine.IDriver, action domain.AppAct
 	}
 }
 
-func (a Adapter) ScreenshotMedia(
+func (a *Adapter) ScreenshotMedia(
 	ctx context.Context,
 	d engine.IDriver,
 	filePath string,

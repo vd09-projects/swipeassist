@@ -58,6 +58,10 @@ func (c *GenericClient) Open(ctx context.Context) error {
 	return c.adapter.WaitReady(ctx, c.driver)
 }
 
+func (c *GenericClient) GetProfileId(ctx context.Context) string {
+	return c.adapter.GetProfileId(ctx)
+}
+
 func (c *GenericClient) NextMedia(ctx context.Context) error {
 	return c.adapter.NextMedia(ctx, c.driver)
 }

@@ -13,6 +13,7 @@ type Adapter interface {
 
 	WaitReady(ctx context.Context, d engine.IDriver) error
 
+	GetProfileId(ctx context.Context) string
 	NextMedia(ctx context.Context, d engine.IDriver) error
 	Act(ctx context.Context, d engine.IDriver, action domain.AppAction) error
 

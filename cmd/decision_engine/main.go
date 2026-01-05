@@ -190,7 +190,7 @@ func processProfile(
 	session *analytics.Session,
 	store persistence.Store,
 ) error {
-	profileKey := fmt.Sprintf("profile_%02d", profileIdx)
+	profileKey := client.GetProfileId(ctx)
 	imagePaths, err := captureProfileScreens(ctx, client, profileIdx, cfg.ShotsPerProfile, cfg.ScreenshotPattern)
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func captureProfileScreens(
 		if err := ctx.Err(); err != nil {
 			return paths, err
 		}
-		path := fmt.Sprintf(pattern, profileIdx, s)
+		path := fmt.Sprintf(pattern, client.GetProfileId(ctx), s)
 		if err := client.Screenshot(ctx, path); err != nil {
 			return paths, fmt.Errorf("capture screenshot %d: %w", s, err)
 		}
