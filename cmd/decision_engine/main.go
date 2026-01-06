@@ -16,6 +16,7 @@ import (
 	"github.com/vd09-projects/swipeassist/extractor"
 	"github.com/vd09-projects/swipeassist/internal/persistence"
 	"github.com/vd09-projects/swipeassist/utils"
+	"github.com/vd09-projects/vision-traits/traits"
 )
 
 type Config struct {
@@ -210,9 +211,15 @@ func processProfile(
 		return fmt.Errorf("store behaviour traits: %w", err)
 	}
 
+	photoPersona, err := ext.ExtractPhotoPersona(ctx, imagePaths[0:1])
+	if err != nil {
+		return fmt.Errorf("extract behaviour: %w", err)
+	}
+
 	decision, err := engine.Decide(ctx, &policies.DecisionContext{
 		App:             cfg.App,
 		BehaviourTraits: behaviour,
+		PhotoPersona:    extractor.MapPhotosToPersonaBundle([]*traits.ExtractedTraits{photoPersona}),
 		ProfileKey:      profileKey,
 	})
 	if err != nil {

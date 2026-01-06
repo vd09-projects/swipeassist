@@ -28,7 +28,7 @@ go.work.sum
 .env
 .gocache
 out
-data/*
+data/postgres/pgdata/
 # Editor/IDE
 # .idea/
 # .vscode/

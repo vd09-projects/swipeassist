@@ -60,7 +60,8 @@ traits:
         (such as facial structure, body shape, hair style, clothing presentation, and other commonly associated physical traits).
         The model MUST choose one of the two options and MUST NOT respond with "unknown", "ambiguous", "not clear",
         or similar qualifiers.
-        
+        The signal field MUST explicitly contain either "male" or "female" as its value.
+
 ollama:
   base_url: "http://localhost:11434"
   model: "qwen2.5vl:latest"
