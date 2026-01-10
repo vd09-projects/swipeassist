@@ -18,6 +18,11 @@ func NewRegistry() *Registry {
 		fmt.Println("ERROR: Error in creating Probabilistic Ratio Policy")
 		// return nil, fmt.Errorf("Error in creating Probabilistic Ratio Policy")
 	}
+	if pol, err := policies.NewApparentGenderProbabilityPolicy(policies.DefaultApparentGenderProbabilityConfig()); err == nil {
+		reg.Register(policies.ApparentGenderProbabilityPolicyName, pol)
+	} else {
+		fmt.Println("ERROR: Error in creating Apparent Gender Probability Policy")
+	}
 	reg.Register(policies.QACyclePolicyName, policies.NewQACyclePolicy(policies.DefaultQACyclePolicyConfig()))
 	return reg
 }

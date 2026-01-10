@@ -1,5 +1,5 @@
 prompt:
-  template_path: "prompts/persona_from_photos_v2.tmpl"
+  template_path: "input/prompts/persona_from_photos_v2.tmpl"
   vars:
     brand: "SwipeAssist"
 

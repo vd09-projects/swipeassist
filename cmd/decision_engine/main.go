@@ -67,7 +67,7 @@ func parseFlags() *Config {
 		screenshotTpl = flag.String("screenshot-pattern", "out/decision_engine/profile_%02d_img_%02d.png", "Printf-style pattern for screenshots; args: profile index (1-based), shot index (1-based)")
 		timeout       = flag.Duration("timeout", 10*time.Minute, "Overall timeout for the pipeline")
 		dryRun        = flag.Bool("dry-run", false, "Print the decision but do not click Like/Pass/Superswipe")
-		policyName    = flag.String("policy", string(policies.QACyclePolicyName), "Decision policy to use (qa_cycle_v1, probabilistic_ratio_v1)")
+		policyName    = flag.String("policy", string(policies.QACyclePolicyName), "Decision policy to use (qa_cycle_v1, probabilistic_ratio_v1, apparent_gender_probability_v1)")
 		dbURL         = flag.String("db-url", "postgres://postgres:postgres@localhost:55432/swipeassist?sslmode=disable", "Postgres connection URL; when set, behaviour traits and decisions are persisted")
 	)
 	flag.Parse()
@@ -119,14 +119,17 @@ func run(ctx context.Context, cfg *Config) (retErr error) {
 
 	time.Sleep(settleDelay)
 
-	// ext, err := extractor.NewVisionExtractor(&extractor.ExtractorConfig{
-	// 	BehaviourCfgPath: cfg.BehaviourCfgPath,
-	// 	PersonaCfgPath:   cfg.PersonaCfgPath,
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("init extractor: %w", err)
-	// }
-	ext := extractor.NewNoopExtractor(5 * time.Second)
+	visExt, err := extractor.NewVisionExtractor(&extractor.ExtractorConfig{
+		BehaviourCfgPath: cfg.BehaviourCfgPath,
+		PersonaCfgPath:   cfg.PersonaCfgPath,
+	})
+	if err != nil {
+		return fmt.Errorf("init NewVisionExtractor: %w", err)
+	}
+	ext, err := extractor.NewSelectiveNoopExtractor(visExt, 5*time.Second, true, false)
+	if err != nil {
+		return fmt.Errorf("init NewSelectiveNoopExtractor: %w", err)
+	}
 
 	engine, err := makeDecisionEngine(cfg)
 	if err != nil {
