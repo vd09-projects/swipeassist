@@ -55,6 +55,56 @@ func (ns NullAppActionKind) Value() (driver.Value, error) {
 	return string(ns.AppActionKind), nil
 }
 
+type ExtractionKind string
+
+const (
+	ExtractionKindBehaviour    ExtractionKind = "behaviour"
+	ExtractionKindPhotoPersona ExtractionKind = "photo_persona"
+)
+
+func (e *ExtractionKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ExtractionKind(s)
+	case string:
+		*e = ExtractionKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ExtractionKind: %T", src)
+	}
+	return nil
+}
+
+type NullExtractionKind struct {
+	ExtractionKind ExtractionKind `json:"extraction_kind"`
+	Valid          bool           `json:"valid"` // Valid is true if ExtractionKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullExtractionKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.ExtractionKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ExtractionKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullExtractionKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ExtractionKind), nil
+}
+
+type BehaviourResponse struct {
+	ID          int64                  `json:"id"`
+	RequestID   int64                  `json:"request_id"`
+	TraitsJson  domain.BehaviourTraits `json:"traits_json"`
+	RawResponse []byte                 `json:"raw_response"`
+	CreatedAt   pgtype.Timestamptz     `json:"created_at"`
+}
+
 type BehaviourTrait struct {
 	ID         int64                  `json:"id"`
 	ProfileKey *string                `json:"profile_key"`
@@ -73,4 +123,37 @@ type Decision struct {
 	Score         int                  `json:"score"`
 	Reason        string               `json:"reason"`
 	CreatedAt     pgtype.Timestamptz   `json:"created_at"`
+}
+
+type LlmRequest struct {
+	ID              int64              `json:"id"`
+	Kind            ExtractionKind     `json:"kind"`
+	ProfileKey      *string            `json:"profile_key"`
+	App             domain.AppName     `json:"app"`
+	TemplatePath    string             `json:"template_path"`
+	PromptText      string             `json:"prompt_text"`
+	Vars            []byte             `json:"vars"`
+	Model           string             `json:"model"`
+	Status          string             `json:"status"`
+	ErrorMessage    *string            `json:"error_message"`
+	ParentRequestID *int64             `json:"parent_request_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
+}
+
+type LlmRequestMedium struct {
+	ID        int64              `json:"id"`
+	RequestID int64              `json:"request_id"`
+	Position  int32              `json:"position"`
+	Uri       string             `json:"uri"`
+	MediaType string             `json:"media_type"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type PhotoPersonaResponse struct {
+	ID          int64                     `json:"id"`
+	RequestID   int64                     `json:"request_id"`
+	PersonaJson domain.PhotoPersonaBundle `json:"persona_json"`
+	RawResponse []byte                    `json:"raw_response"`
+	CreatedAt   pgtype.Timestamptz        `json:"created_at"`
 }
