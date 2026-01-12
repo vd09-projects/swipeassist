@@ -20,13 +20,13 @@ type fakeExtractor struct {
 	personaErr    error
 }
 
-func (f *fakeExtractor) ExtractBehaviour(ctx context.Context, imagePaths []string) (*domain.BehaviourTraits, error) {
+func (f *fakeExtractor) ExtractBehaviour(ctx context.Context, profileKey string, imagePaths []string) (*domain.BehaviourTraits, error) {
 	f.behaviourCalls++
 	f.lastBehaviour = append([]string(nil), imagePaths...)
 	return f.behaviourResp, f.behaviourErr
 }
 
-func (f *fakeExtractor) ExtractPhotoPersona(ctx context.Context, imagePaths []string) (*traits.ExtractedTraits, error) {
+func (f *fakeExtractor) ExtractPhotoPersona(ctx context.Context, profileKey string, imagePaths []string) (*traits.ExtractedTraits, error) {
 	f.personaCalls++
 	f.lastPersona = append([]string(nil), imagePaths...)
 	return f.personaResp, f.personaErr
@@ -43,7 +43,7 @@ func TestSelectiveNoopExtractor_NoopsBehaviourOnly(t *testing.T) {
 		t.Fatalf("unexpected error constructing selective noop: %v", err)
 	}
 
-	bh, err := ext.ExtractBehaviour(context.Background(), []string{"a.png"})
+	bh, err := ext.ExtractBehaviour(context.Background(), "", []string{"a.png"})
 	if err != nil {
 		t.Fatalf("ExtractBehaviour returned error: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestSelectiveNoopExtractor_NoopsBehaviourOnly(t *testing.T) {
 		t.Fatalf("expected empty behaviour traits, got %#v", bh)
 	}
 
-	ph, err := ext.ExtractPhotoPersona(context.Background(), []string{"b.png"})
+	ph, err := ext.ExtractPhotoPersona(context.Background(), "", []string{"b.png"})
 	if err != nil {
 		t.Fatalf("ExtractPhotoPersona returned error: %v", err)
 	}
@@ -77,8 +77,8 @@ func TestSelectiveNoopExtractor_PassThroughWhenDisabled(t *testing.T) {
 		t.Fatalf("unexpected error constructing selective noop: %v", err)
 	}
 
-	_, _ = ext.ExtractBehaviour(context.Background(), []string{"c.png"})
-	_, _ = ext.ExtractPhotoPersona(context.Background(), []string{"d.png"})
+	_, _ = ext.ExtractBehaviour(context.Background(), "", []string{"c.png"})
+	_, _ = ext.ExtractPhotoPersona(context.Background(), "", []string{"d.png"})
 
 	if inner.behaviourCalls != 1 || inner.personaCalls != 1 {
 		t.Fatalf("expected pass-through calls, got behaviour=%d persona=%d", inner.behaviourCalls, inner.personaCalls)

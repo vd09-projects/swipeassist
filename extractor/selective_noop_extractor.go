@@ -48,22 +48,22 @@ func NewVisionExtractorWithNoops(cfg *ExtractorConfig, delay time.Duration, beha
 	return NewSelectiveNoopExtractor(inner, delay, behaviourNoop, personaNoop)
 }
 
-func (s *SelectiveNoopExtractor) ExtractBehaviour(ctx context.Context, imagePaths []string) (*domain.BehaviourTraits, error) {
+func (s *SelectiveNoopExtractor) ExtractBehaviour(ctx context.Context, profileKey string, imagePaths []string) (*domain.BehaviourTraits, error) {
 	if s.behaviourNoop {
 		if err := utils.RandomSleepCtx(ctx, s.delay, 2*s.delay); err != nil {
 			return nil, err
 		}
 		return &domain.BehaviourTraits{}, nil
 	}
-	return s.innerExtractor.ExtractBehaviour(ctx, imagePaths)
+	return s.innerExtractor.ExtractBehaviour(ctx, profileKey, imagePaths)
 }
 
-func (s *SelectiveNoopExtractor) ExtractPhotoPersona(ctx context.Context, imagePaths []string) (*traits.ExtractedTraits, error) {
+func (s *SelectiveNoopExtractor) ExtractPhotoPersona(ctx context.Context, profileKey string, imagePaths []string) (*traits.ExtractedTraits, error) {
 	if s.personaNoop {
 		if err := utils.RandomSleepCtx(ctx, s.delay, 2*s.delay); err != nil {
 			return nil, err
 		}
 		return &traits.ExtractedTraits{}, nil
 	}
-	return s.innerExtractor.ExtractPhotoPersona(ctx, imagePaths)
+	return s.innerExtractor.ExtractPhotoPersona(ctx, profileKey, imagePaths)
 }

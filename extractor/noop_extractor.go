@@ -24,14 +24,14 @@ func NewNoopExtractor(delay time.Duration) *NoopExtractor {
 	return &NoopExtractor{delay: delay}
 }
 
-func (n *NoopExtractor) ExtractBehaviour(ctx context.Context, _ []string) (*domain.BehaviourTraits, error) {
+func (n *NoopExtractor) ExtractBehaviour(ctx context.Context, profileKey string, _ []string) (*domain.BehaviourTraits, error) {
 	if err := utils.RandomSleepCtx(ctx, n.delay, 2*n.delay); err != nil {
 		return nil, err
 	}
 	return &domain.BehaviourTraits{}, nil
 }
 
-func (n *NoopExtractor) ExtractPhotoPersona(ctx context.Context, _ []string) (*traits.ExtractedTraits, error) {
+func (n *NoopExtractor) ExtractPhotoPersona(ctx context.Context, profileKey string, _ []string) (*traits.ExtractedTraits, error) {
 	if err := utils.RandomSleepCtx(ctx, n.delay, 2*n.delay); err != nil {
 		return nil, err
 	}

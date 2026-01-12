@@ -8,6 +8,6 @@ import (
 )
 
 type Extractor interface {
-	ExtractBehaviour(ctx context.Context, imagePaths []string) (*domain.BehaviourTraits, error)
-	ExtractPhotoPersona(ctx context.Context, imagePaths []string) (*traits.ExtractedTraits, error)
+	ExtractBehaviour(ctx context.Context, profileKey string, imagePaths []string) (*domain.BehaviourTraits, error)
+	ExtractPhotoPersona(ctx context.Context, profileKey string, imagePaths []string) (*traits.ExtractedTraits, error)
 }

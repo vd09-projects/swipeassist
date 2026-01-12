@@ -72,7 +72,7 @@ func TestVisionExtractorExtractBehaviour(t *testing.T) {
 		behaviourTr: mockTraits,
 	}
 
-	got, err := e.ExtractBehaviour(context.Background(), []string{imgPath})
+	got, err := e.ExtractBehaviour(context.Background(), "", []string{imgPath})
 	if err != nil {
 		t.Fatalf("ExtractBehaviour returned error: %v", err)
 	}

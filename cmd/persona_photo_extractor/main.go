@@ -43,7 +43,7 @@ func main() {
 
 	personaByPhoto := make([]*traits.ExtractedTraits, 0, len(images))
 	for _, image := range images {
-		tr, err := ext.ExtractPhotoPersona(ctx, []string{image})
+		tr, err := ext.ExtractPhotoPersona(ctx, "", []string{image})
 		if err != nil {
 			log.Fatalf("extract persona for %s: %v", image, err)
 		}

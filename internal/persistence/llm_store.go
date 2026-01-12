@@ -40,12 +40,20 @@ type CreateLLMRequestInput struct {
 	Media           []MediaItem
 }
 
+// LLMPersister abstracts persistence for LLM requests and responses.
+type LLMPersister interface {
+	CreateRequest(ctx context.Context, in CreateLLMRequestInput) (dbgen.LlmRequest, error)
+	MarkRequestStatus(ctx context.Context, requestID int64, status LLMRequestStatus, errMsg *string, completedAt time.Time) error
+	SaveBehaviourResponse(ctx context.Context, requestID int64, traits domain.BehaviourTraits, raw json.RawMessage) (dbgen.BehaviourResponse, error)
+	SavePhotoPersonaResponse(ctx context.Context, requestID int64, persona domain.PhotoPersonaBundle, raw json.RawMessage) (dbgen.PhotoPersonaResponse, error)
+}
+
 // LLMStore hides the dbgen wiring for storing LLM requests and responses.
 type LLMStore struct {
 	queries *dbgen.Queries
 }
 
-func NewLLMStore(queries *dbgen.Queries) *LLMStore {
+func NewLLMStore(queries *dbgen.Queries) LLMPersister {
 	return &LLMStore{queries: queries}
 }
 
@@ -168,4 +176,25 @@ func nullableString(v string) *string {
 		return nil
 	}
 	return &v
+}
+
+// noopLLMStore drops all writes when persistence is disabled.
+type noopLLMStore struct{}
+
+func NewNoopLLMStore() LLMPersister { return noopLLMStore{} }
+
+func (noopLLMStore) CreateRequest(_ context.Context, _ CreateLLMRequestInput) (dbgen.LlmRequest, error) {
+	return dbgen.LlmRequest{}, nil
+}
+
+func (noopLLMStore) MarkRequestStatus(_ context.Context, _ int64, _ LLMRequestStatus, _ *string, _ time.Time) error {
+	return nil
+}
+
+func (noopLLMStore) SaveBehaviourResponse(_ context.Context, _ int64, _ domain.BehaviourTraits, _ json.RawMessage) (dbgen.BehaviourResponse, error) {
+	return dbgen.BehaviourResponse{}, nil
+}
+
+func (noopLLMStore) SavePhotoPersonaResponse(_ context.Context, _ int64, _ domain.PhotoPersonaBundle, _ json.RawMessage) (dbgen.PhotoPersonaResponse, error) {
+	return dbgen.PhotoPersonaResponse{}, nil
 }

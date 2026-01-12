@@ -27,16 +27,24 @@ func NewVisionExtractor(eCfg *ExtractorConfig) (Extractor, error) {
 		return nil, fmt.Errorf("Extractor config is nil")
 	}
 
-	bTr, err := traits.New(
-		traits.WithConfigPath(eCfg.BehaviourCfgPath),
-	)
+	bTrOpts := []traits.Option{}
+	if eCfg.BehaviourCfg != nil {
+		bTrOpts = append(bTrOpts, traits.WithConfig(eCfg.BehaviourCfg))
+	} else {
+		bTrOpts = append(bTrOpts, traits.WithConfigPath(eCfg.BehaviourCfgPath))
+	}
+	bTr, err := traits.New(bTrOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	pTr, err := traits.New(
-		traits.WithConfigPath(eCfg.PersonaCfgPath),
-	)
+	pTrOpts := []traits.Option{}
+	if eCfg.PersonaCfg != nil {
+		pTrOpts = append(pTrOpts, traits.WithConfig(eCfg.PersonaCfg))
+	} else {
+		pTrOpts = append(pTrOpts, traits.WithConfigPath(eCfg.PersonaCfgPath))
+	}
+	pTr, err := traits.New(pTrOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +55,7 @@ func NewVisionExtractor(eCfg *ExtractorConfig) (Extractor, error) {
 	}, nil
 }
 
-func (e *VisionExtractor) ExtractBehaviour(ctx context.Context, imagePaths []string) (*domain.BehaviourTraits, error) {
+func (e *VisionExtractor) ExtractBehaviour(ctx context.Context, profileKey string, imagePaths []string) (*domain.BehaviourTraits, error) {
 	// check file exists
 	for _, imagePath := range imagePaths {
 		if _, err := os.Stat(imagePath); err != nil {
@@ -59,7 +67,7 @@ func (e *VisionExtractor) ExtractBehaviour(ctx context.Context, imagePaths []str
 	return mapToBehaviourTraits(&et), err
 }
 
-func (e *VisionExtractor) ExtractPhotoPersona(ctx context.Context, imagePaths []string) (*traits.ExtractedTraits, error) {
+func (e *VisionExtractor) ExtractPhotoPersona(ctx context.Context, profileKey string, imagePaths []string) (*traits.ExtractedTraits, error) {
 	for _, imagePath := range imagePaths {
 		if _, err := os.Stat(imagePath); err != nil {
 			return nil, fmt.Errorf("image not found: %w", err)

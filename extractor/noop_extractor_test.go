@@ -14,7 +14,7 @@ func TestNoopExtractorDelayAndResults(t *testing.T) {
 	ext := NewNoopExtractor(delay)
 
 	start := time.Now()
-	bt, err := ext.ExtractBehaviour(context.Background(), nil)
+	bt, err := ext.ExtractBehaviour(context.Background(), "", nil)
 	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("ExtractBehaviour returned error: %v", err)
@@ -26,7 +26,7 @@ func TestNoopExtractorDelayAndResults(t *testing.T) {
 		t.Fatalf("expected delay of at least %v, got %v", delay, elapsed)
 	}
 
-	pt, err := ext.ExtractPhotoPersona(context.Background(), nil)
+	pt, err := ext.ExtractPhotoPersona(context.Background(), "", nil)
 	if err != nil {
 		t.Fatalf("ExtractPhotoPersona returned error: %v", err)
 	}
@@ -42,11 +42,11 @@ func TestNoopExtractorRespectsContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
 	defer cancel()
 
-	if _, err := ext.ExtractBehaviour(ctx, nil); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := ext.ExtractBehaviour(ctx, "", nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("expected deadline exceeded, got %v", err)
 	}
 
-	if _, err := ext.ExtractPhotoPersona(ctx, nil); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := ext.ExtractPhotoPersona(ctx, "", nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("expected deadline exceeded, got %v", err)
 	}
 }

@@ -92,11 +92,28 @@ func parseFlags() *Config {
 }
 
 func run(ctx context.Context, cfg *Config) (retErr error) {
-	store, err := persistence.NewStore(ctx, cfg.DBURL)
+	stores, err := persistence.NewStores(ctx, cfg.DBURL)
 	if err != nil {
 		return fmt.Errorf("init db store: %w", err)
 	}
-	defer store.Close(ctx)
+	defer stores.Close(ctx)
+
+	// behCfg, err := vtconfig.Load(cfg.BehaviourCfgPath)
+	// if err != nil {
+	// 	return fmt.Errorf("load behaviour config: %w", err)
+	// }
+	// personaCfg, err := vtconfig.Load(cfg.PersonaCfgPath)
+	// if err != nil {
+	// 	return fmt.Errorf("load persona config: %w", err)
+	// }
+	// behPrompt, err := extractor.PromptSpecFromConfig(&behCfg)
+	// if err != nil {
+	// 	return fmt.Errorf("render behaviour prompt: %w", err)
+	// }
+	// personaPrompt, err := extractor.PromptSpecFromConfig(&personaCfg)
+	// if err != nil {
+	// 	return fmt.Errorf("render persona prompt: %w", err)
+	// }
 
 	session := analytics.NewSession(analytics.Config{
 		App:    cfg.App,
@@ -119,16 +136,13 @@ func run(ctx context.Context, cfg *Config) (retErr error) {
 
 	time.Sleep(settleDelay)
 
-	visExt, err := extractor.NewVisionExtractor(&extractor.ExtractorConfig{
+	extConfig := &extractor.ExtractorConfig{
 		BehaviourCfgPath: cfg.BehaviourCfgPath,
 		PersonaCfgPath:   cfg.PersonaCfgPath,
-	})
-	if err != nil {
-		return fmt.Errorf("init NewVisionExtractor: %w", err)
 	}
-	ext, err := extractor.NewSelectiveNoopExtractor(visExt, 5*time.Second, true, false)
+	persistingExt, err := extractor.NewPersistingExtractor(extConfig, stores.LLM, cfg.App)
 	if err != nil {
-		return fmt.Errorf("init NewSelectiveNoopExtractor: %w", err)
+		return fmt.Errorf("init persisting extractor: %w", err)
 	}
 
 	engine, err := makeDecisionEngine(cfg)
@@ -150,7 +164,7 @@ func run(ctx context.Context, cfg *Config) (retErr error) {
 		}
 
 		session.ProfileAttempt()
-		if err := processProfile(ctx, profile, cfg, client, ext, engine, session, store); err != nil {
+		if err := processProfile(ctx, profile, cfg, client, persistingExt, engine, session, stores); err != nil {
 			return fmt.Errorf("profile %d: %w", profile, err)
 		}
 		session.ProfileComplete()
@@ -192,8 +206,13 @@ func processProfile(
 	ext extractor.Extractor,
 	engine *decisionengine.DecisionEngine,
 	session *analytics.Session,
-	store persistence.Store,
+	stores *persistence.Stores,
 ) error {
+	if stores == nil {
+		return fmt.Errorf("stores is nil")
+	}
+	// store := stores.Decisions
+
 	profileKey := client.GetProfileId(ctx)
 	imagePaths, err := captureProfileScreens(ctx, client, profileIdx, cfg.ShotsPerProfile, cfg.ScreenshotPattern)
 	if err != nil {
@@ -206,23 +225,27 @@ func processProfile(
 		session.AddScreenshots(len(imagePaths))
 	}
 
-	behaviour, err := ext.ExtractBehaviour(ctx, imagePaths)
+	behaviour, err := ext.ExtractBehaviour(ctx, profileKey, imagePaths)
 	if err != nil {
 		return fmt.Errorf("extract behaviour: %w", err)
 	}
-	if err := store.SaveBehaviour(ctx, profileKey, cfg.App, behaviour); err != nil {
-		return fmt.Errorf("store behaviour traits: %w", err)
-	}
+	// if err := store.SaveBehaviour(ctx, profileKey, cfg.App, behaviour); err != nil {
+	// 	return fmt.Errorf("store behaviour traits: %w", err)
+	// }
 
-	photoPersona, err := ext.ExtractPhotoPersona(ctx, imagePaths[0:1])
-	if err != nil {
-		return fmt.Errorf("extract behaviour: %w", err)
+	photoPersonas := make([]*traits.ExtractedTraits, 0)
+	for _, personaMedia := range imagePaths {
+		photoPersona, err := ext.ExtractPhotoPersona(ctx, profileKey, []string{personaMedia})
+		if err != nil {
+			return fmt.Errorf("extract persona: %w", err)
+		}
+		photoPersonas = append(photoPersonas, photoPersona)
 	}
 
 	decision, err := engine.Decide(ctx, &policies.DecisionContext{
 		App:             cfg.App,
 		BehaviourTraits: behaviour,
-		PhotoPersona:    extractor.MapPhotosToPersonaBundle([]*traits.ExtractedTraits{photoPersona}),
+		PhotoPersona:    extractor.MapPhotosToPersonaBundle(photoPersonas),
 		ProfileKey:      profileKey,
 	})
 	if err != nil {
@@ -231,9 +254,9 @@ func processProfile(
 	if session != nil {
 		session.RecordAction(decision.Action.Kind)
 	}
-	if err := store.SaveDecision(ctx, profileKey, decision); err != nil {
-		return fmt.Errorf("store decision: %w", err)
-	}
+	// if err := store.SaveDecision(ctx, profileKey, decision); err != nil {
+	// 	return fmt.Errorf("store decision: %w", err)
+	// }
 
 	log.Printf("profile %d: decision=%s score=%d policy=%s reason=%s", profileIdx, decision.Action.Kind, decision.Score, decision.PolicyName, decision.Reason)
 

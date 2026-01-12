@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("init extractor: %v", err)
 	}
 
-	results, err := ext.ExtractBehaviour(ctx, images)
+	results, err := ext.ExtractBehaviour(ctx, "", images)
 	if err != nil {
 		log.Fatalf("extract: %v", err)
 	}
