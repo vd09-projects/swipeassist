@@ -17,7 +17,7 @@ db/down:
 
 # Apply the SQL migrations to the target database.
 db/migrate:
-	psql $(DB_URL) -f db/migrations/0001_init.sql
+	psql $(DB_URL) -f db/migrations/0002_llm_requests.sql
 
 db/login:
 	psql "$(ROOT_DB_URL)"

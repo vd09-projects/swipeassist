@@ -56,11 +56,22 @@ traits:
 
     - name: "apparent_gender"
       description: >
-        Determine the apparent gender strictly as either "male" or "female" based solely on visible visual cues in the image
-        (such as facial structure, body shape, hair style, clothing presentation, and other commonly associated physical traits).
-        The model MUST choose one of the two options and MUST NOT respond with "unknown", "ambiguous", "not clear",
-        or similar qualifiers.
-        The signal field MUST explicitly contain either "male" or "female" as its value.
+        Determine the apparent gender based solely on visible visual cues in the image
+        (such as facial structure, body shape, hairstyle, clothing presentation, and other
+        commonly associated physical traits).
+
+        Valid outputs are:
+        - "male"
+        - "female"
+        - "unknown"
+
+        Rules:
+        - If **exactly one clearly visible person** is present in the image, the model MUST
+          choose either "male" or "female".
+        - If **no person** is visible in the image, the signal MUST be "unknown".
+        - If **multiple people** are visible in the image, the signal MUST be "unknown".
+        - The model MUST NOT use qualifiers such as "ambiguous", "not clear", or similar.
+        - The signal field MUST contain exactly one of: "male", "female", or "unknown".
 
 ollama:
   base_url: "http://localhost:11434"

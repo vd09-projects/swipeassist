@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"context"
+	"os"
 	"strings"
 	"time"
 
@@ -14,11 +15,13 @@ import (
 
 // PersistingVisionExtractor wraps an Extractor and records LLM requests/responses via an LLMPersister.
 type PersistingVisionExtractor struct {
-	inner        Extractor
-	llm          persistence.LLMPersister
-	app          domain.AppName
-	behaviourCfg vconfig.Config
-	personaCfg   vconfig.Config
+	inner                Extractor
+	llm                  persistence.LLMPersister
+	app                  domain.AppName
+	behaviourCfg         vconfig.Config
+	personaCfg           vconfig.Config
+	rawBehaviourTemplate string
+	rawPersonaTemplate   string
 }
 
 func NewPersistingExtractor(eCfg *ExtractorConfig, llm persistence.LLMPersister, app domain.AppName) (Extractor, error) {
@@ -26,9 +29,17 @@ func NewPersistingExtractor(eCfg *ExtractorConfig, llm persistence.LLMPersister,
 	if err != nil {
 		return nil, err
 	}
+	rawBehaviourTemplate, err := os.ReadFile(behaviourCfg.Prompt.TemplatePath)
+	if err != nil {
+		return nil, err
+	}
 	eCfg.BehaviourCfg = &behaviourCfg
 
 	personaCfg, err := vconfig.Load(eCfg.PersonaCfgPath)
+	if err != nil {
+		return nil, err
+	}
+	rawPersonaTemplate, err := os.ReadFile(personaCfg.Prompt.TemplatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -40,11 +51,13 @@ func NewPersistingExtractor(eCfg *ExtractorConfig, llm persistence.LLMPersister,
 	}
 
 	return &PersistingVisionExtractor{
-		inner:        ext,
-		llm:          llm,
-		app:          app,
-		behaviourCfg: behaviourCfg,
-		personaCfg:   personaCfg,
+		inner:                ext,
+		llm:                  llm,
+		app:                  app,
+		behaviourCfg:         behaviourCfg,
+		personaCfg:           personaCfg,
+		rawBehaviourTemplate: string(rawBehaviourTemplate),
+		rawPersonaTemplate:   string(rawPersonaTemplate),
 	}, nil
 }
 
@@ -55,10 +68,10 @@ func (p *PersistingVisionExtractor) ExtractBehaviour(ctx context.Context, profil
 		ProfileKey:   profileKey,
 		App:          p.app,
 		TemplatePath: p.behaviourCfg.Prompt.TemplatePath,
-		// PromptText:   p.behaviourPrompt.PromptText,
-		// Vars:         p.behaviourPrompt.Vars,
-		Model: p.behaviourCfg.Ollama.Model,
-		Media: mediaItemsFromPaths(mediaPaths),
+		PromptText:   p.rawBehaviourTemplate,
+		Vars:         p.behaviourCfg.Prompt.Vars,
+		Model:        p.behaviourCfg.Ollama.Model,
+		Media:        mediaItemsFromPaths(mediaPaths),
 	})
 	if err != nil {
 		return nil, err
@@ -71,7 +84,7 @@ func (p *PersistingVisionExtractor) ExtractBehaviour(ctx context.Context, profil
 		return nil, err
 	}
 	if res != nil {
-		if _, err := p.llm.SaveBehaviourResponse(ctx, req.ID, *res, nil); err != nil {
+		if _, err := p.llm.SaveBehaviourResponse(ctx, req.ID, res, nil); err != nil {
 			return res, err
 		}
 	}
@@ -88,10 +101,10 @@ func (p *PersistingVisionExtractor) ExtractPhotoPersona(ctx context.Context, pro
 		ProfileKey:   profileKey,
 		App:          p.app,
 		TemplatePath: p.personaCfg.Prompt.TemplatePath,
-		// PromptText:   p.personaPrompt.PromptText,
-		// Vars:         p.personaPrompt.Vars,
-		Model: p.personaCfg.Ollama.Model,
-		Media: mediaItemsFromPaths(mediaPaths),
+		PromptText:   p.rawPersonaTemplate,
+		Vars:         p.personaCfg.Prompt.Vars,
+		Model:        p.personaCfg.Ollama.Model,
+		Media:        mediaItemsFromPaths(mediaPaths),
 	})
 	if err != nil {
 		return nil, err
@@ -102,6 +115,13 @@ func (p *PersistingVisionExtractor) ExtractPhotoPersona(ctx context.Context, pro
 		msg := err.Error()
 		_ = p.llm.MarkRequestStatus(ctx, req.ID, persistence.LLMRequestStatusFailed, &msg, time.Now())
 		return nil, err
+	}
+
+	if traitsByPhoto != nil {
+		personaBundle := MapPhotosToPersonaBundle([]*traits.ExtractedTraits{traitsByPhoto})
+		if _, err := p.llm.SavePhotoPersonaResponse(ctx, req.ID, personaBundle, nil); err != nil {
+			return traitsByPhoto, err
+		}
 	}
 	return traitsByPhoto, nil
 }

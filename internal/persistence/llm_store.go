@@ -44,8 +44,8 @@ type CreateLLMRequestInput struct {
 type LLMPersister interface {
 	CreateRequest(ctx context.Context, in CreateLLMRequestInput) (dbgen.LlmRequest, error)
 	MarkRequestStatus(ctx context.Context, requestID int64, status LLMRequestStatus, errMsg *string, completedAt time.Time) error
-	SaveBehaviourResponse(ctx context.Context, requestID int64, traits domain.BehaviourTraits, raw json.RawMessage) (dbgen.BehaviourResponse, error)
-	SavePhotoPersonaResponse(ctx context.Context, requestID int64, persona domain.PhotoPersonaBundle, raw json.RawMessage) (dbgen.PhotoPersonaResponse, error)
+	SaveBehaviourResponse(ctx context.Context, requestID int64, traits *domain.BehaviourTraits, raw json.RawMessage) (dbgen.BehaviourResponse, error)
+	SavePhotoPersonaResponse(ctx context.Context, requestID int64, persona *domain.PhotoPersonaBundle, raw json.RawMessage) (dbgen.PhotoPersonaResponse, error)
 }
 
 // LLMStore hides the dbgen wiring for storing LLM requests and responses.
@@ -149,24 +149,30 @@ func (s *LLMStore) MarkRequestStatus(ctx context.Context, requestID int64, statu
 	})
 }
 
-func (s *LLMStore) SaveBehaviourResponse(ctx context.Context, requestID int64, traits domain.BehaviourTraits, raw json.RawMessage) (dbgen.BehaviourResponse, error) {
+func (s *LLMStore) SaveBehaviourResponse(ctx context.Context, requestID int64, traits *domain.BehaviourTraits, raw json.RawMessage) (dbgen.BehaviourResponse, error) {
 	if s.queries == nil {
 		return dbgen.BehaviourResponse{}, fmt.Errorf("queries is nil")
 	}
 	return s.queries.InsertBehaviourResponse(ctx, dbgen.InsertBehaviourResponseParams{
 		RequestID:   requestID,
-		TraitsJson:  traits,
+		TraitsJson:  *traits,
 		RawResponse: raw,
 	})
 }
 
-func (s *LLMStore) SavePhotoPersonaResponse(ctx context.Context, requestID int64, persona domain.PhotoPersonaBundle, raw json.RawMessage) (dbgen.PhotoPersonaResponse, error) {
+func (s *LLMStore) SavePhotoPersonaResponse(ctx context.Context, requestID int64, persona *domain.PhotoPersonaBundle, raw json.RawMessage) (dbgen.PhotoPersonaResponse, error) {
 	if s.queries == nil {
 		return dbgen.PhotoPersonaResponse{}, fmt.Errorf("queries is nil")
 	}
+	if persona == nil {
+		return dbgen.PhotoPersonaResponse{}, fmt.Errorf("Photo Persona Bundle is nil")
+	}
+	// if len(persona.Images) == 0 {
+	// 	return dbgen.PhotoPersonaResponse{}, fmt.Errorf("Number of Valid Image is Zero")
+	// }
 	return s.queries.InsertPhotoPersonaResponse(ctx, dbgen.InsertPhotoPersonaResponseParams{
 		RequestID:   requestID,
-		PersonaJson: persona,
+		PersonaJson: *persona,
 		RawResponse: raw,
 	})
 }
@@ -191,10 +197,10 @@ func (noopLLMStore) MarkRequestStatus(_ context.Context, _ int64, _ LLMRequestSt
 	return nil
 }
 
-func (noopLLMStore) SaveBehaviourResponse(_ context.Context, _ int64, _ domain.BehaviourTraits, _ json.RawMessage) (dbgen.BehaviourResponse, error) {
+func (noopLLMStore) SaveBehaviourResponse(_ context.Context, _ int64, _ *domain.BehaviourTraits, _ json.RawMessage) (dbgen.BehaviourResponse, error) {
 	return dbgen.BehaviourResponse{}, nil
 }
 
-func (noopLLMStore) SavePhotoPersonaResponse(_ context.Context, _ int64, _ domain.PhotoPersonaBundle, _ json.RawMessage) (dbgen.PhotoPersonaResponse, error) {
+func (noopLLMStore) SavePhotoPersonaResponse(_ context.Context, _ int64, _ *domain.PhotoPersonaBundle, _ json.RawMessage) (dbgen.PhotoPersonaResponse, error) {
 	return dbgen.PhotoPersonaResponse{}, nil
 }
