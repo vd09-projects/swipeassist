@@ -7,10 +7,16 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vd09-projects/swipeassist/domain"
 	"github.com/vd09-projects/swipeassist/utils"
 	"github.com/vd09-projects/vision-traits/traits"
+)
+
+const (
+	defaultRetryAttempts = 3
+	defaultRetryDelay    = 250 * time.Millisecond
 )
 
 type traitsPathExtractor interface {
@@ -20,6 +26,9 @@ type traitsPathExtractor interface {
 type VisionExtractor struct {
 	behaviourTr traitsPathExtractor
 	personaTr   traitsPathExtractor
+
+	retryAttempts int
+	retryDelay    time.Duration
 }
 
 func NewVisionExtractor(eCfg *ExtractorConfig) (Extractor, error) {
@@ -49,9 +58,20 @@ func NewVisionExtractor(eCfg *ExtractorConfig) (Extractor, error) {
 		return nil, err
 	}
 
+	retryAttempts := eCfg.RetryAttempts
+	if retryAttempts <= 0 {
+		retryAttempts = defaultRetryAttempts
+	}
+	retryDelay := eCfg.RetryDelay
+	if retryDelay <= 0 {
+		retryDelay = defaultRetryDelay
+	}
+
 	return &VisionExtractor{
-		behaviourTr: bTr,
-		personaTr:   pTr,
+		behaviourTr:   bTr,
+		personaTr:     pTr,
+		retryAttempts: retryAttempts,
+		retryDelay:    retryDelay,
 	}, nil
 }
 
@@ -63,7 +83,7 @@ func (e *VisionExtractor) ExtractBehaviour(ctx context.Context, profileKey strin
 		}
 	}
 
-	et, err := e.behaviourTr.ExtractFromPaths(ctx, imagePaths)
+	et, err := e.extractWithRetry(ctx, e.behaviourTr, imagePaths)
 	return mapToBehaviourTraits(&et), err
 }
 
@@ -74,8 +94,55 @@ func (e *VisionExtractor) ExtractPhotoPersona(ctx context.Context, profileKey st
 		}
 	}
 
-	et, err := e.personaTr.ExtractFromPaths(ctx, imagePaths)
+	et, err := e.extractWithRetry(ctx, e.personaTr, imagePaths)
 	return &et, err
+}
+
+func (e *VisionExtractor) extractWithRetry(
+	ctx context.Context,
+	extractor traitsPathExtractor,
+	imagePaths []string,
+) (traits.ExtractedTraits, error) {
+	attempts := e.retryAttempts
+	if attempts <= 0 {
+		attempts = defaultRetryAttempts
+	}
+
+	delay := e.retryDelay
+	if delay < 0 {
+		delay = 0
+	}
+
+	var lastErr error
+	var lastRes traits.ExtractedTraits
+
+	for i := 0; i < attempts; i++ {
+		if err := ctx.Err(); err != nil {
+			return lastRes, err
+		}
+
+		res, err := extractor.ExtractFromPaths(ctx, imagePaths)
+		lastRes = res
+		if err == nil {
+			return res, nil
+		}
+
+		lastErr = err
+		if i == attempts-1 {
+			break
+		}
+
+		fmt.Println("Retrying the extract from VisionExtractor; Attempt No.", i + 1)
+		if err := utils.SleepCtx(ctx, delay); err != nil {
+			return lastRes, err
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("vision extraction failed after %d attempts", attempts)
+	}
+
+	return lastRes, lastErr
 }
 
 func mapToBehaviourTraits(in *traits.ExtractedTraits) *domain.BehaviourTraits {

@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,6 +16,8 @@ type fakeTraitsExtractor struct {
 	t             *testing.T
 	response      traits.ExtractedTraits
 	err           error
+	responses     []traits.ExtractedTraits
+	errs          []error
 	capturedPaths []string
 	callCount     int
 }
@@ -25,7 +28,28 @@ func (f *fakeTraitsExtractor) ExtractFromPaths(ctx context.Context, paths []stri
 	if ctx == nil {
 		f.t.Fatalf("expected context, got nil")
 	}
-	return f.response, f.err
+
+	idx := f.callCount - 1
+
+	resp := f.response
+	if len(f.responses) > 0 {
+		if idx < len(f.responses) {
+			resp = f.responses[idx]
+		} else {
+			resp = f.responses[len(f.responses)-1]
+		}
+	}
+
+	err := f.err
+	if len(f.errs) > 0 {
+		if idx < len(f.errs) {
+			err = f.errs[idx]
+		} else {
+			err = f.errs[len(f.errs)-1]
+		}
+	}
+
+	return resp, err
 }
 
 func TestVisionExtractorExtractBehaviour(t *testing.T) {
@@ -109,6 +133,77 @@ func TestVisionExtractorExtractBehaviour(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("ExtractBehaviour mismatch:\nwant %#v\n got %#v", want, got)
+	}
+}
+
+func TestVisionExtractorRetriesAndSucceeds(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	imgPath := filepath.Join(tmpDir, "img.png")
+	if err := os.WriteFile(imgPath, []byte("stub"), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	extractionErr := errors.New("first attempt failed")
+	mockTraits := &fakeTraitsExtractor{
+		t:         t,
+		responses: []traits.ExtractedTraits{{}, {GlobalConfidence: 42}},
+		errs:      []error{extractionErr, nil},
+	}
+
+	e := &VisionExtractor{
+		behaviourTr:   mockTraits,
+		retryAttempts: 2,
+		retryDelay:    0,
+	}
+
+	got, err := e.ExtractBehaviour(context.Background(), "", []string{imgPath})
+	if err != nil {
+		t.Fatalf("ExtractBehaviour returned error: %v", err)
+	}
+	if mockTraits.callCount != 2 {
+		t.Fatalf("expected extractor called twice, got %d", mockTraits.callCount)
+	}
+	if got == nil || got.GlobalConfidence != 42 {
+		t.Fatalf("unexpected result after retries: %#v", got)
+	}
+}
+
+func TestVisionExtractorRetriesAndFails(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	imgPath := filepath.Join(tmpDir, "img.png")
+	if err := os.WriteFile(imgPath, []byte("stub"), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	firstErr := errors.New("first attempt failed")
+	secondErr := errors.New("second attempt failed")
+	mockTraits := &fakeTraitsExtractor{
+		t:    t,
+		errs: []error{firstErr, secondErr},
+	}
+
+	e := &VisionExtractor{
+		behaviourTr:   mockTraits,
+		retryAttempts: 2,
+		retryDelay:    0,
+	}
+
+	got, err := e.ExtractBehaviour(context.Background(), "", []string{imgPath})
+	if err == nil {
+		t.Fatalf("expected ExtractBehaviour to fail")
+	}
+	if !errors.Is(err, secondErr) {
+		t.Fatalf("expected final error %v, got %v", secondErr, err)
+	}
+	if mockTraits.callCount != 2 {
+		t.Fatalf("expected extractor called twice, got %d", mockTraits.callCount)
+	}
+	if got == nil {
+		t.Fatalf("expected non-nil result even when failing")
 	}
 }
 
